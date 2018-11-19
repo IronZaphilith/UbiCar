@@ -1,4 +1,4 @@
-package com.ubicomp.mstokfisz.test.Activities;
+package com.ubicomp.mstokfisz.UbiCar.Activities;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -15,8 +15,8 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-import com.ubicomp.mstokfisz.test.Services.ObdHandler;
-import com.ubicomp.mstokfisz.test.R;
+import com.ubicomp.mstokfisz.UbiCar.Services.ObdHandler;
+import com.ubicomp.mstokfisz.UbiCar.R;
 
 import java.util.ArrayList;
 import java.util.Set;

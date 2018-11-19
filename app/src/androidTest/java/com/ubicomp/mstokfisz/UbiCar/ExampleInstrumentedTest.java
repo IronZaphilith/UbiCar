@@ -1,4 +1,4 @@
-package com.ubicomp.mstokfisz.test;
+package com.ubicomp.mstokfisz.UbiCar;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;

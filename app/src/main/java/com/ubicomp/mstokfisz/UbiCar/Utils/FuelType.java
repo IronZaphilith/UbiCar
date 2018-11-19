@@ -1,4 +1,4 @@
-package com.ubicomp.mstokfisz.test.Utils;
+package com.ubicomp.mstokfisz.UbiCar.Utils;
 
 public enum FuelType {
     PETROL,

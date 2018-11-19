@@ -1,4 +1,4 @@
-package com.ubicomp.mstokfisz.test.DataClasses;
+package com.ubicomp.mstokfisz.UbiCar.DataClasses;
 
 public class Passenger {
     private String name;

@@ -1,6 +1,6 @@
-package com.ubicomp.mstokfisz.test.DataClasses;
+package com.ubicomp.mstokfisz.UbiCar.DataClasses;
 
-import com.ubicomp.mstokfisz.test.Utils.FuelType;
+import com.ubicomp.mstokfisz.UbiCar.Utils.FuelType;
 
 public class Car {
     private String name;

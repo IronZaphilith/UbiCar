@@ -1,4 +1,4 @@
-package com.ubicomp.mstokfisz.test.Services;
+package com.ubicomp.mstokfisz.UbiCar.Services;
 
 import android.bluetooth.BluetoothSocket;
 import android.os.AsyncTask;
@@ -7,7 +7,7 @@ import com.github.pires.obd.commands.*;
 import com.github.pires.obd.commands.engine.*;
 import com.github.pires.obd.commands.protocol.*;
 import com.github.pires.obd.enums.ObdProtocols;
-import com.ubicomp.mstokfisz.test.Activities.MainScreen;
+import com.ubicomp.mstokfisz.UbiCar.Activities.MainScreen;
 
 
 public class ObdHandler {

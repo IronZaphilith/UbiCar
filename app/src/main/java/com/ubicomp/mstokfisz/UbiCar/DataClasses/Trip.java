@@ -1,4 +1,4 @@
-package com.ubicomp.mstokfisz.test.DataClasses;
+package com.ubicomp.mstokfisz.UbiCar.DataClasses;
 
 import java.util.ArrayList;
 
