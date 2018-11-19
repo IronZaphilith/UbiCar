@@ -8,19 +8,27 @@ import com.github.pires.obd.commands.engine.*;
 import com.github.pires.obd.commands.protocol.*;
 import com.github.pires.obd.enums.ObdProtocols;
 import com.ubicomp.mstokfisz.UbiCar.Activities.MainScreen;
+import com.ubicomp.mstokfisz.UbiCar.DataClasses.Data;
+import com.ubicomp.mstokfisz.UbiCar.DataClasses.Trip;
+
+import java.text.DecimalFormat;
+import java.util.Locale;
 
 
 public class ObdHandler {
     private BluetoothSocket socket;
     public boolean isConnected = false;
-    private MainScreen mainScreen = null;
+    private MainScreen mainScreen;
     public ObdDataGainer obdDataGainer = null;
 
 
     public ObdHandler (BluetoothSocket socket, MainScreen mainScreen) {
         this.socket = socket;
         this.mainScreen = mainScreen;
-        obdDataGainer = new ObdDataGainer();
+    }
+
+    public void start(Data data) {
+        this.obdDataGainer = new ObdDataGainer(data.getCurrentTrip());
     }
 
 
@@ -40,22 +48,54 @@ public class ObdHandler {
     }
 
     public class ObdDataGainer extends AsyncTask<Void, String, String> {
-        private long startTime = 0;
+        private Trip trip;
+
         private long numberOfCalculations;
-        private double distance = 0;
-        private int avgSpeed = 0;
-        private long speedSum = 0;
-        private double avgMaf = 0;
-        private long time;
+        private double distance;
+        private int avgSpeed;
+        private long speedSum;
+        private double avgMaf;
+        private long workingTime;
+        private long realTime = 0;
+        private long previousTime;
+
+        private long startTime = 0;
+        private long startCycleTime = 0;
+        private long currentTime;
         private final double dieselDensity = 0.83;
         private final double petrolDensity = 0.755;
         private final double airDieselRatio = 14.5;
         private final double airPetrolRatio = 14.7;
-        public void getDataFromDevice() {
+
+        private ObdDataGainer(Trip trip) {
+            this.trip = trip;
+            this.numberOfCalculations = trip.getNumberOfCalculations();
+            this.distance = trip.getDistance();
+            this.avgSpeed = trip.getAvgSpeed();
+            this.speedSum = trip.getSpeedSum();
+            this.avgMaf = trip.getAvgMaf();
+            this.workingTime = trip.getWorkingTime();
+            this.previousTime = trip.getTravelTime();
+            this.execute();
+        }
+
+        public void finish() {
+            obdDataGainer.cancel(true);
+            trip.setAvgMaf(avgMaf);
+            trip.setAvgSpeed(avgSpeed);
+            trip.setDistance(distance);
+            trip.setNumberOfCalculations(numberOfCalculations);
+            trip.setSpeedSum(speedSum);
+            trip.setWorkingTime(workingTime);
+            trip.setTravelTime(realTime);
+        }
+
+        private void getDataFromDevice() {
             MassAirFlowCommand mafCommand = new MassAirFlowCommand();
             SpeedCommand speedCommand = new SpeedCommand();
-            startTime = System.currentTimeMillis();
             numberOfCalculations = 0;
+            startTime = System.currentTimeMillis();
+            startCycleTime = System.currentTimeMillis();
             while (!Thread.currentThread().isInterrupted() && mainScreen.isStarted)
             {
                 try {
@@ -72,16 +112,21 @@ public class ObdHandler {
                 else {
                     avgMaf = (avgMaf + mafCommand.getMAF()) / 2;
                 }
-                speedSum += speedCommand.getMetricSpeed();
+                int currentSpeed = speedCommand.getMetricSpeed();
+
+                speedSum += currentSpeed;
                 numberOfCalculations++;
                 avgSpeed = (int)(speedSum/numberOfCalculations);
-                calculateTimeDistance();
-                String formattedTime = formatTime();
+                calculateTimeDistance(currentSpeed);
+                String formattedRealTime = formatTime(realTime);
                 String fuelConsumption = getFormattedFuelConsumption();
-                publishProgress(mafCommand.getFormattedResult(), speedCommand.getFormattedResult(), Double.toString(distance), formattedTime, fuelConsumption);
+                String distance = getFormattedDistance();
+                publishProgress(mafCommand.getFormattedResult(), speedCommand.getFormattedResult(), distance, formattedRealTime, fuelConsumption);
                 Log.d("OBD", "MAF: " + mafCommand.getFormattedResult());
                 Log.d("OBD", "Speed: " + speedCommand.getFormattedResult());
                 Log.d("OBD", "l/100km: " + fuelConsumption);
+                Log.d("OBD", "Distance: " + distance);
+                Log.d("OBD", "Real time: "+ formattedRealTime);
             }
         }
 
@@ -100,32 +145,31 @@ public class ObdHandler {
             mainScreen.fuelConsumptionValue.setText(text[4]);
         }
 
-        public void finish() {
-            obdDataGainer = new ObdDataGainer();
+        private void calculateTimeDistance(int currentSpeed) {
+            currentTime = (System.currentTimeMillis()- startCycleTime);
+            startCycleTime = System.currentTimeMillis();
+            realTime = (System.currentTimeMillis()- startTime) + previousTime;
+            workingTime += currentTime;
+            distance += (double)currentSpeed * (currentTime /(1000*3600.0));
         }
 
-        private void calculateTimeDistance() {
-            time = (System.currentTimeMillis()-startTime);
-            distance = (double)Math.round((double)avgSpeed * (double)(time/(10*3600)))/100;
-            Log.d("OBD","Distance: " + distance);
-        }
-
-        private String formatTime() {
+        private String formatTime(long time) {
             long second = (time / 1000) % 60;
             long minute = (time / (1000 * 60)) % 60;
             long hour = time / (1000 * 60 * 60);
-
-            String formattedTime = String.format("%02d:%02d:%02d", hour, minute, second);
-            Log.d("Calc", "Time: "+formattedTime);
-            return formattedTime;
+            return String.format(Locale.ENGLISH,"%02d:%02d:%02d", hour, minute, second);
         }
 
         private double calculateFuelConsumption() {
-            return ((avgMaf * 3600)/airPetrolRatio * petrolDensity * (time/3600000)) / (distance * 100);
+            return ((avgMaf * 3600)/airPetrolRatio * petrolDensity * (workingTime /3600000.0)) / (distance * 100.0);
         }
 
         private String getFormattedFuelConsumption() {
-            return String.format("%02d", calculateFuelConsumption());
+            return new DecimalFormat("#.0#").format(calculateFuelConsumption());
+        }
+
+        private String getFormattedDistance() {
+            return new DecimalFormat("#.0#").format(distance);
         }
     }
 }

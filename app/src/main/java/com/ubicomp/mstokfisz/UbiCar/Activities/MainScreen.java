@@ -15,8 +15,14 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.ubicomp.mstokfisz.UbiCar.DataClasses.Car;
+import com.ubicomp.mstokfisz.UbiCar.DataClasses.Data;
+import com.ubicomp.mstokfisz.UbiCar.DataClasses.Passenger;
+import com.ubicomp.mstokfisz.UbiCar.DataClasses.Trip;
+import com.ubicomp.mstokfisz.UbiCar.Services.DataHandler;
 import com.ubicomp.mstokfisz.UbiCar.Services.ObdHandler;
 import com.ubicomp.mstokfisz.UbiCar.R;
+import com.ubicomp.mstokfisz.UbiCar.Utils.FuelType;
 
 import java.util.ArrayList;
 import java.util.Set;
@@ -36,11 +42,18 @@ public class MainScreen extends AppCompatActivity {
     public boolean isStarted = false;
     private BluetoothSocket socket = null;
     private ObdHandler obdHandler = null;
+    private DataHandler dataHandler = null;
+    private Data data = null;
 
-    double AFR = 0.0;
+    private double AFR = 0.0;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        dataHandler = new DataHandler(this);
+        data = dataHandler.getData();
+
+        initializeTestData();
+
         setContentView(R.layout.relative_main_layout);
         connectButton = findViewById(R.id.connectBtn);
         connectButton.setOnClickListener(new View.OnClickListener() {
@@ -115,7 +128,7 @@ public class MainScreen extends AppCompatActivity {
                     startButton.setText("Stop");
                     Log.d("MainView", "OBD command sent!");
                     // Check if it was executed
-                    obdHandler.obdDataGainer.execute();
+                    obdHandler.start(data);
                 }
                 else if (obdHandler != null) {
                     isStarted = false;
@@ -136,16 +149,33 @@ public class MainScreen extends AppCompatActivity {
     @Override
     protected void onRestart() {
         super.onRestart();
-        if (isStarted){
-            obdHandler.obdDataGainer.execute();
-        }
+
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        if (obdHandler.obdDataGainer.getStatus() == AsyncTask.Status.RUNNING)
+
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.w("Main", "Should pause");
+        if (obdHandler != null && obdHandler.obdDataGainer.getStatus() == AsyncTask.Status.RUNNING)
             obdHandler.obdDataGainer.finish();
+        dataHandler.saveData(data);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.w("Main", "Should resume");
+        data = dataHandler.getData();
+        if (isStarted){
+            obdHandler.start(data);
+        }
+        Log.d ("Main", data.getCurrentTrip().getName());
     }
 
     @Override
@@ -179,5 +209,12 @@ public class MainScreen extends AppCompatActivity {
         fuelConsumptionValue.setText("0.0");
         distanceValue.setText("0 km");
         timeValue.setText("0:00:00");
+    }
+
+    private void initializeTestData() {
+        data.addCar(new Car("Mitsubishi Outlander", FuelType.PETROL));
+        data.addPassenger(new Passenger("Sprosniak"));
+        data.addTrip(new Trip("Trip 1", data.getCars().get(0), data.getPassengers()));
+        dataHandler.saveData(data);
     }
 }

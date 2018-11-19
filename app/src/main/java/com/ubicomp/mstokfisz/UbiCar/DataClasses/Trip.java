@@ -11,11 +11,37 @@ public class Trip {
     private int avgSpeed = 0;
     private long speedSum = 0;
     private double avgMaf = 0;
+    private long workingTime = 0;
+    private long travelTime = 0;
 
     public Trip(String name, Car car, ArrayList<Passenger> passengers) {
         this.name = name;
         this.car = car;
         this.passengers = passengers;
+    }
+
+    public long getWorkingTime() {
+        return workingTime;
+    }
+
+    public void setWorkingTime(long workingTime) {
+        this.workingTime = workingTime;
+    }
+
+    public long getTravelTime() {
+        return travelTime;
+    }
+
+    public void setTravelTime(long travelTime) {
+        this.travelTime = travelTime;
+    }
+
+    public long getTime() {
+        return time;
+    }
+
+    public void setTime(long time) {
+        this.time = time;
     }
 
     public String getName() {
@@ -90,14 +116,6 @@ public class Trip {
 
     public void setAvgMaf(double avgMaf) {
         this.avgMaf = avgMaf;
-    }
-
-    public long getTime() {
-        return time;
-    }
-
-    public void setTime(long time) {
-        this.time = time;
     }
 
     private long time;
