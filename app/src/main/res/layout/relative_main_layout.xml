@@ -4,6 +4,7 @@
                 android:layout_height="match_parent"
                 xmlns:tools="http://schemas.android.com/tools"
                 android:background="#424242"
+                android:orientation="vertical"
                 tools:context=".Activities.MainScreen">
 	 <LinearLayout
 		    android:id="@+id/mafValueContainer"
