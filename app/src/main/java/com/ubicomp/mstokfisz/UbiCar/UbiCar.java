@@ -4,9 +4,11 @@ import android.app.Application;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.os.Build;
+import com.ubicomp.mstokfisz.UbiCar.Activities.MainScreen;
 
 public class UbiCar extends Application {
     public static final String CHANNEL_ID = "ubiCarServiceChannel";
+    private MainScreen activeMainScreen = null;
 
     @Override
     public void onCreate() {
@@ -26,5 +28,17 @@ public class UbiCar extends Application {
             NotificationManager manager = getSystemService(NotificationManager.class);
             manager.createNotificationChannel(serviceChannel);
         }
+    }
+
+    public MainScreen getActiveMainScreen() {
+        return activeMainScreen;
+    }
+
+    public void setActiveMainScreen(MainScreen activeMainScreen) {
+        this.activeMainScreen = activeMainScreen;
+    }
+
+    public void removeActiveMainScreen() {
+        activeMainScreen = null;
     }
 }

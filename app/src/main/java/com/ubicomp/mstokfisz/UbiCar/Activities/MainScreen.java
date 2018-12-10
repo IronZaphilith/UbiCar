@@ -3,9 +3,9 @@ package com.ubicomp.mstokfisz.UbiCar.Activities;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.content.DialogInterface;
-import android.content.Intent;
+import android.content.*;
 import android.os.AsyncTask;
+import android.os.IBinder;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -19,17 +19,21 @@ import com.ubicomp.mstokfisz.UbiCar.DataClasses.Car;
 import com.ubicomp.mstokfisz.UbiCar.DataClasses.Data;
 import com.ubicomp.mstokfisz.UbiCar.DataClasses.Passenger;
 import com.ubicomp.mstokfisz.UbiCar.DataClasses.Trip;
-import com.ubicomp.mstokfisz.UbiCar.Services.DataHandler;
-import com.ubicomp.mstokfisz.UbiCar.Services.ObdHandler;
 import com.ubicomp.mstokfisz.UbiCar.R;
+import com.ubicomp.mstokfisz.UbiCar.Services.UbiCarService;
+import com.ubicomp.mstokfisz.UbiCar.Services.UbiCarService.MyBinder;
+import com.ubicomp.mstokfisz.UbiCar.UbiCar;
 import com.ubicomp.mstokfisz.UbiCar.Utils.FuelType;
 
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.UUID;
 
+@SuppressWarnings("serial")
 public class MainScreen extends AppCompatActivity {
 
+    private static UbiCar app = null;
+    private MainScreen mainScreen = null;
     private Button resetButton = null;
     private Button startButton = null;
     private Button connectButton = null;
@@ -40,26 +44,25 @@ public class MainScreen extends AppCompatActivity {
     public TextView timeValue = null;
     private String deviceAddress = null;
     public boolean isStarted = false;
-    private BluetoothSocket socket = null;
-    private ObdHandler obdHandler = null;
-    private DataHandler dataHandler = null;
-    private Data data = null;
+    public BluetoothSocket socket = null;
+    UbiCarService mUbiCarService;
+    boolean mUbiCarServiceBound = false;
+
 
     private double AFR = 0.0;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        dataHandler = new DataHandler(this);
-        data = dataHandler.getData();
-
-        initializeTestData();
+        app = ((UbiCar)getApplicationContext());
+        app.setActiveMainScreen(this);
+//        initializeTestData();
 
         setContentView(R.layout.relative_main_layout);
         connectButton = findViewById(R.id.connectBtn);
         connectButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (obdHandler != null && obdHandler.isConnected) {
+                if (mUbiCarService != null && mUbiCarService.isConnected) {
                     Toast.makeText(getApplicationContext(), "Device already connected!",Toast.LENGTH_SHORT).show();
                 }
                 ArrayList deviceStrs = new ArrayList();
@@ -96,8 +99,8 @@ public class MainScreen extends AppCompatActivity {
                             deviceAddress = (String) devices.get(position);
                             Log.d("Bluetooth", deviceAddress);
                             bluetoothConnect(btAdapter);
-                            obdHandler = new ObdHandler(socket, MainScreen.this);
-                            obdHandler.setupObd();
+//                            obdHandler = new ObdHandler(socket, MainScreen.this);
+//                            obdHandler.setupObd();
                         }
                     });
                     alertDialog.setTitle("Choose Bluetooth device");
@@ -113,7 +116,11 @@ public class MainScreen extends AppCompatActivity {
                     isStarted = false;
                     startButton.setText("Start");
                     Log.d("MainView", "OBD stopped!");
-                    obdHandler.obdDataGainer.finish();
+                    if (mUbiCarServiceBound) {
+                        unbindService(mServiceConnection);
+                        stopService(new Intent(mainScreen, UbiCarService.class));
+                        mUbiCarServiceBound = false;
+                    }
                 }
                 resetValues();
             }
@@ -123,18 +130,24 @@ public class MainScreen extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 Log.d("MainView", "Start clicked!");
-                if (!isStarted && obdHandler != null && obdHandler.isConnected) {
-                    isStarted = true;
+                if (!isStarted) {
+                    final Intent intent = new Intent(MainScreen.this, UbiCarService.class);
+                    startService(intent);
+                    bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE);
+//                    mUbiCarService.setSocket(socket);
+                    Log.d("MainView", "Service bound: "+mUbiCarServiceBound);
                     startButton.setText("Stop");
                     Log.d("MainView", "OBD command sent!");
+                    isStarted = true;
                     // Check if it was executed
-                    obdHandler.start(data);
                 }
-                else if (obdHandler != null) {
-                    isStarted = false;
+                else if (mUbiCarService != null) {
                     startButton.setText("Start");
                     Log.d("MainView", "OBD stopped!");
-                    obdHandler.obdDataGainer.finish();
+                    mUbiCarServiceBound = false;
+                    isStarted = false;
+                    unbindService(mServiceConnection);
+                    stopService(new Intent(MainScreen.this, UbiCarService.class));
                 }
             }
         });
@@ -147,35 +160,46 @@ public class MainScreen extends AppCompatActivity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+    }
+
+    @Override
     protected void onRestart() {
         super.onRestart();
-
+        Intent intent = new Intent(MainScreen.this, UbiCarService.class);
+//        startService(intent);
+        bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-
+        if (mUbiCarServiceBound) {
+            unbindService(mServiceConnection);
+            mUbiCarServiceBound = false;
+        }
+        app.removeActiveMainScreen();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         Log.w("Main", "Should pause");
-        if (obdHandler != null && obdHandler.obdDataGainer.getStatus() == AsyncTask.Status.RUNNING)
-            obdHandler.obdDataGainer.finish();
-        dataHandler.saveData(data);
+//        if (obdHandler != null && obdHandler.obdDataGainer.getStatus() == AsyncTask.Status.RUNNING)
+//            obdHandler.obdDataGainer.finish();
+//        dataHandler.saveData(data);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         Log.w("Main", "Should resume");
-        data = dataHandler.getData();
-        if (isStarted){
-            obdHandler.start(data);
-        }
-        Log.d ("Main", data.getCurrentTrip().getName());
+//        data = dataHandler.getData();
+//        if (isStarted){
+//            obdHandler.start(data);
+//        }
+//        Log.d ("Main", data.getCurrentTrip().getName());
     }
 
     @Override
@@ -211,10 +235,19 @@ public class MainScreen extends AppCompatActivity {
         timeValue.setText("0:00:00");
     }
 
-    private void initializeTestData() {
-        data.addCar(new Car("Mitsubishi Outlander", FuelType.PETROL));
-        data.addPassenger(new Passenger("Sprosniak"));
-        data.addTrip(new Trip("Trip 1", data.getCars().get(0), data.getPassengers()));
-        dataHandler.saveData(data);
-    }
+    private ServiceConnection mServiceConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            mUbiCarServiceBound = false;
+        }
+
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d("ServiceConnection", "Connecting");
+            MyBinder myBinder = (MyBinder) service;
+            mUbiCarService = myBinder.getService();
+            mUbiCarServiceBound = true;
+        }
+    };
 }
