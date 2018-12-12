@@ -123,10 +123,7 @@ public class MainScreen extends AppCompatActivity {
                     final Intent intent = new Intent(MainScreen.this, UbiCarService.class);
                     startService(intent);
                     bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE);
-//                    mUbiCarService.setSocket(socket);
-                    Log.d("MainView", "Service bound: "+mUbiCarServiceBound);
                     startButton.setText("Stop");
-                    Log.d("MainView", "OBD command sent!");
                     isStarted = true;
                     // Check if it was executed
                 }
@@ -157,8 +154,10 @@ public class MainScreen extends AppCompatActivity {
     protected void onRestart() {
         super.onRestart();
         app.setActiveMainScreen(this);
-        Intent intent = new Intent(MainScreen.this, UbiCarService.class);
-        bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE);
+        if (isStarted) {
+            Intent intent = new Intent(MainScreen.this, UbiCarService.class);
+            bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE);
+        }
     }
 
     @Override
