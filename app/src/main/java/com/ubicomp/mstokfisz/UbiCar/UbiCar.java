@@ -3,12 +3,14 @@ package com.ubicomp.mstokfisz.UbiCar;
 import android.app.Application;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.bluetooth.BluetoothSocket;
 import android.os.Build;
 import com.ubicomp.mstokfisz.UbiCar.Activities.MainScreen;
 
 public class UbiCar extends Application {
     public static final String CHANNEL_ID = "ubiCarServiceChannel";
     private MainScreen activeMainScreen = null;
+    private BluetoothSocket socket = null;
 
     @Override
     public void onCreate() {
@@ -28,6 +30,18 @@ public class UbiCar extends Application {
             NotificationManager manager = getSystemService(NotificationManager.class);
             manager.createNotificationChannel(serviceChannel);
         }
+    }
+
+    public BluetoothSocket getSocket() {
+        return socket;
+    }
+
+    public void setSocket(BluetoothSocket socket) {
+        this.socket = socket;
+    }
+
+    public void removeActiveSocket() {
+        socket = null;
     }
 
     public MainScreen getActiveMainScreen() {

@@ -26,9 +26,7 @@ import java.util.UUID;
 public class MainScreen extends AppCompatActivity {
 
     private static UbiCar app = null;
-    private Button resetButton = null;
     private Button startButton = null;
-    private Button connectButton = null;
     public TextView mafValue = null;
     public TextView speedValue = null;
     public TextView fuelConsumptionValue = null;
@@ -49,14 +47,14 @@ public class MainScreen extends AppCompatActivity {
         app.setActiveMainScreen(this);
 
         setContentView(R.layout.relative_main_layout);
-        connectButton = findViewById(R.id.connectBtn);
+        Button connectButton = findViewById(R.id.connectBtn);
         connectButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 if (mUbiCarService != null && mUbiCarService.isConnected) {
                     Toast.makeText(getApplicationContext(), "Device already connected!",Toast.LENGTH_SHORT).show();
                 }
-                ArrayList deviceStrs = new ArrayList();
+                final ArrayList deviceStrs = new ArrayList();
                 final ArrayList devices = new ArrayList();
 
                 final BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -79,7 +77,7 @@ public class MainScreen extends AppCompatActivity {
                     // show list
                     final AlertDialog.Builder alertDialog = new AlertDialog.Builder(MainScreen.this);
 
-                    ArrayAdapter adapter = new ArrayAdapter(MainScreen.this, android.R.layout.select_dialog_singlechoice,
+                    final ArrayAdapter adapter = new ArrayAdapter(MainScreen.this, android.R.layout.select_dialog_singlechoice,
                             deviceStrs.toArray(new String[deviceStrs.size()]));
 
                     alertDialog.setSingleChoiceItems(adapter, -1, new DialogInterface.OnClickListener() {
@@ -94,10 +92,48 @@ public class MainScreen extends AppCompatActivity {
                     });
                     alertDialog.setTitle("Choose Bluetooth device");
                     alertDialog.show();
+
+//                    // Discover new devices
+//                    btAdapter.startDiscovery();
+//
+//                    final BroadcastReceiver mReceiver = new BroadcastReceiver()
+//                    {
+//                        @Override
+//                        public void onReceive(Context context, Intent intent)
+//                        {
+//                            String action = intent.getAction();
+//                            // When discovery finds a device
+//                            if (BluetoothDevice.ACTION_FOUND.equals(action))
+//                            {
+//                                // Get the bluetoothDevice object from the Intent
+//                                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+//
+//                                deviceStrs.add(device.getName() + "\n" + device.getAddress());
+//                                devices.add(device.getAddress());
+//                                Log.d("BT", "Found");
+//
+//                                alertDialog.setSingleChoiceItems(adapter, -1, new DialogInterface.OnClickListener() {
+//                                    @Override
+//                                    public void onClick(DialogInterface dialog, int which) {
+//                                        dialog.dismiss();
+//                                        int position = ((AlertDialog) dialog).getListView().getCheckedItemPosition();
+//                                        deviceAddress = (String) devices.get(position);
+//                                        Log.d("Bluetooth", deviceAddress);
+//                                        bluetoothConnect(btAdapter);
+//                                    }
+//                                });
+//                            }
+//
+//                        }
+//                    };
+//
+//                    // Register the BroadcastReceiver
+////                    IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+//                    registerReceiver(mReceiver, new IntentFilter());
                 }
             }
         });
-        resetButton = findViewById(R.id.resetBtn);
+        Button resetButton = findViewById(R.id.resetBtn);
         resetButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
