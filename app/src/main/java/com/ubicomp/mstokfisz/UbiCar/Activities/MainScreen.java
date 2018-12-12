@@ -4,7 +4,6 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.*;
-import android.os.AsyncTask;
 import android.os.IBinder;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -15,25 +14,18 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-import com.ubicomp.mstokfisz.UbiCar.DataClasses.Car;
-import com.ubicomp.mstokfisz.UbiCar.DataClasses.Data;
-import com.ubicomp.mstokfisz.UbiCar.DataClasses.Passenger;
-import com.ubicomp.mstokfisz.UbiCar.DataClasses.Trip;
 import com.ubicomp.mstokfisz.UbiCar.R;
 import com.ubicomp.mstokfisz.UbiCar.Services.UbiCarService;
 import com.ubicomp.mstokfisz.UbiCar.Services.UbiCarService.MyBinder;
 import com.ubicomp.mstokfisz.UbiCar.UbiCar;
-import com.ubicomp.mstokfisz.UbiCar.Utils.FuelType;
 
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.UUID;
 
-@SuppressWarnings("serial")
 public class MainScreen extends AppCompatActivity {
 
     private static UbiCar app = null;
-    private MainScreen mainScreen = null;
     private Button resetButton = null;
     private Button startButton = null;
     private Button connectButton = null;
@@ -43,10 +35,10 @@ public class MainScreen extends AppCompatActivity {
     public TextView distanceValue = null;
     public TextView timeValue = null;
     private String deviceAddress = null;
-    public boolean isStarted = false;
+    private boolean isStarted = false;
     public BluetoothSocket socket = null;
-    UbiCarService mUbiCarService;
-    boolean mUbiCarServiceBound = false;
+    private UbiCarService mUbiCarService;
+    private boolean mUbiCarServiceBound = false;
 
 
     private double AFR = 0.0;
@@ -55,7 +47,6 @@ public class MainScreen extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         app = ((UbiCar)getApplicationContext());
         app.setActiveMainScreen(this);
-//        initializeTestData();
 
         setContentView(R.layout.relative_main_layout);
         connectButton = findViewById(R.id.connectBtn);
@@ -99,8 +90,6 @@ public class MainScreen extends AppCompatActivity {
                             deviceAddress = (String) devices.get(position);
                             Log.d("Bluetooth", deviceAddress);
                             bluetoothConnect(btAdapter);
-//                            obdHandler = new ObdHandler(socket, MainScreen.this);
-//                            obdHandler.setupObd();
                         }
                     });
                     alertDialog.setTitle("Choose Bluetooth device");
@@ -118,7 +107,7 @@ public class MainScreen extends AppCompatActivity {
                     Log.d("MainView", "OBD stopped!");
                     if (mUbiCarServiceBound) {
                         unbindService(mServiceConnection);
-                        stopService(new Intent(mainScreen, UbiCarService.class));
+                        stopService(new Intent(MainScreen.this, UbiCarService.class));
                         mUbiCarServiceBound = false;
                     }
                 }
@@ -141,7 +130,7 @@ public class MainScreen extends AppCompatActivity {
                     isStarted = true;
                     // Check if it was executed
                 }
-                else if (mUbiCarService != null) {
+                else if (mUbiCarServiceBound) {
                     startButton.setText("Start");
                     Log.d("MainView", "OBD stopped!");
                     mUbiCarServiceBound = false;
@@ -167,18 +156,14 @@ public class MainScreen extends AppCompatActivity {
     @Override
     protected void onRestart() {
         super.onRestart();
+        app.setActiveMainScreen(this);
         Intent intent = new Intent(MainScreen.this, UbiCarService.class);
-//        startService(intent);
         bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        if (mUbiCarServiceBound) {
-            unbindService(mServiceConnection);
-            mUbiCarServiceBound = false;
-        }
         app.removeActiveMainScreen();
     }
 
@@ -186,20 +171,12 @@ public class MainScreen extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         Log.w("Main", "Should pause");
-//        if (obdHandler != null && obdHandler.obdDataGainer.getStatus() == AsyncTask.Status.RUNNING)
-//            obdHandler.obdDataGainer.finish();
-//        dataHandler.saveData(data);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         Log.w("Main", "Should resume");
-//        data = dataHandler.getData();
-//        if (isStarted){
-//            obdHandler.start(data);
-//        }
-//        Log.d ("Main", data.getCurrentTrip().getName());
     }
 
     @Override

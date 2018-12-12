@@ -8,7 +8,6 @@ import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.IBinder;
-import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import com.github.pires.obd.commands.SpeedCommand;
@@ -38,14 +37,10 @@ public class UbiCarService extends Service {
     private BluetoothSocket socket = null;
     public boolean isConnected = false;
     private MainScreen mainScreen = null;
-    public ObdDataGainer obdDataGainer = null;
+    private ObdDataGainer obdDataGainer = null;
     private DataHandler dataHandler = null;
     private Data data = null;
     private IBinder mBinder = new MyBinder();
-
-    public void setSocket(BluetoothSocket socket) {
-        this.socket = socket;
-    }
 
     @Override
     public void onCreate() {
@@ -76,16 +71,15 @@ public class UbiCarService extends Service {
 
         startForeground(1, notification);
 
-        //do heavy work on a background thread
-        //stopSelf();
-
         return START_NOT_STICKY;
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        Log.d(LOG_TAG, "Destroy");
         obdDataGainer.finish();
+        stopSelf();
     }
 
     @Override
@@ -100,7 +94,7 @@ public class UbiCarService extends Service {
     @Override
     public void onRebind(Intent intent) {
         Log.v(LOG_TAG, "in onRebind");
-        mainScreen = (MainScreen) intent.getSerializableExtra("mainScreen");
+        mainScreen = app.getActiveMainScreen();
         super.onRebind(intent);
     }
 
@@ -108,33 +102,16 @@ public class UbiCarService extends Service {
     public boolean onUnbind(Intent intent) {
         Log.v(LOG_TAG, "in onUnbind");
         mainScreen = null;
-//        obdDataGainer.finish();
         return true;
     }
 
-    public void setupObd() {
-        try {
-            new EchoOffCommand().run(socket.getInputStream(), socket.getOutputStream());
-
-            new LineFeedOffCommand().run(socket.getInputStream(), socket.getOutputStream());
-
-            new TimeoutCommand(50).run(socket.getInputStream(), socket.getOutputStream());
-
-            new SelectProtocolCommand(ObdProtocols.AUTO).run(socket.getInputStream(), socket.getOutputStream());
-        } catch (Exception e) {
-            Log.e("OBD", e.getMessage());
-        }
-        isConnected = true;
-    }
-
     public void start() {
-        setupObd();
         this.obdDataGainer = new ObdDataGainer(data.getCurrentTrip());
     }
 
     private void initializeTestData() {
         data.addCar(new Car("Mitsubishi Outlander", FuelType.PETROL));
-        data.addPassenger(new Passenger("Sprosniak"));
+        data.addPassenger(new Passenger("Tester"));
         data.addTrip(new Trip("Trip 1", data.getCars().get(0), data.getPassengers()));
         dataHandler.saveData(data);
     }
@@ -219,6 +196,24 @@ public class UbiCarService extends Service {
                 Log.d("OBD", "Distance: " + distance);
                 Log.d("OBD", "Real time: "+ formattedRealTime);
             }
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            try {
+                new EchoOffCommand().run(socket.getInputStream(), socket.getOutputStream());
+
+                new LineFeedOffCommand().run(socket.getInputStream(), socket.getOutputStream());
+
+                new TimeoutCommand(50).run(socket.getInputStream(), socket.getOutputStream());
+
+                new SelectProtocolCommand(ObdProtocols.AUTO).run(socket.getInputStream(), socket.getOutputStream());
+            } catch (Exception e) {
+                Log.e("OBD", e.getMessage());
+                finish();
+            }
+            isConnected = true;
         }
 
         @Override
