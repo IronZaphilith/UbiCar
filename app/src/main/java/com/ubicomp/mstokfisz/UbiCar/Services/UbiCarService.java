@@ -10,6 +10,7 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
+import android.widget.Toast;
 import com.github.pires.obd.commands.SpeedCommand;
 import com.github.pires.obd.commands.engine.MassAirFlowCommand;
 import com.github.pires.obd.commands.protocol.EchoOffCommand;
@@ -22,10 +23,12 @@ import com.ubicomp.mstokfisz.UbiCar.DataClasses.Car;
 import com.ubicomp.mstokfisz.UbiCar.DataClasses.Data;
 import com.ubicomp.mstokfisz.UbiCar.DataClasses.Passenger;
 import com.ubicomp.mstokfisz.UbiCar.DataClasses.Trip;
+import com.ubicomp.mstokfisz.UbiCar.Exceptions.CarIncompatibleException;
 import com.ubicomp.mstokfisz.UbiCar.R;
 import com.ubicomp.mstokfisz.UbiCar.UbiCar;
 import com.ubicomp.mstokfisz.UbiCar.Utils.FuelType;
 
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.Locale;
 
@@ -136,6 +139,10 @@ public class UbiCarService extends Service {
         private final double airDieselRatio = 14.5;
         private final double airPetrolRatio = 14.7;
 
+        private final MassAirFlowCommand mafCommand;
+        private final SpeedCommand speedCommand;
+        private int compatibilityMode = 1;
+
         private ObdDataGainer(Trip trip) {
             this.trip = trip;
             this.numberOfCalculations = trip.getNumberOfCalculations();
@@ -145,6 +152,8 @@ public class UbiCarService extends Service {
             this.avgMaf = trip.getAvgMaf();
             this.workingTime = trip.getWorkingTime();
             this.previousTime = trip.getTravelTime();
+            this.mafCommand = new MassAirFlowCommand();
+            this.speedCommand = new SpeedCommand();
             this.execute();
         }
 
@@ -160,8 +169,6 @@ public class UbiCarService extends Service {
         }
 
         private void getDataFromDevice() {
-            MassAirFlowCommand mafCommand = new MassAirFlowCommand();
-            SpeedCommand speedCommand = new SpeedCommand();
             numberOfCalculations = 0;
             startTime = System.currentTimeMillis();
             startCycleTime = System.currentTimeMillis();
@@ -211,14 +218,45 @@ public class UbiCarService extends Service {
                 new SelectProtocolCommand(ObdProtocols.AUTO).run(socket.getInputStream(), socket.getOutputStream());
             } catch (Exception e) {
                 Log.e("OBD", e.getMessage());
-                finish();
+                compatibilityMode = 0;
             }
-            isConnected = true;
+            // Check compatibility
+            try {
+                mafCommand.run(socket.getInputStream(), socket.getOutputStream());
+                speedCommand.run(socket.getInputStream(), socket.getOutputStream());
+
+                if (mafCommand.getMAF() + 1.0f < 0.001f) {
+                    throw new CarIncompatibleException("MAF command not supported");
+                }
+
+                speedCommand.getMetricSpeed();
+            } catch (CarIncompatibleException e) {
+                Log.e ("OBD", e.getMessage());
+                Toast.makeText(getApplicationContext(), "Car not compatible!", Toast.LENGTH_LONG).show();
+                compatibilityMode = 0;
+            } catch (IOException e) {
+                Log.e("OBD", e.getMessage());
+                Toast.makeText(getApplicationContext(), "Connection problem encountered!", Toast.LENGTH_LONG).show();
+                compatibilityMode = 0;
+            } catch (Exception e) {
+                Log.e("OBD", e.getMessage());
+                compatibilityMode = 0;
+            }
+
+            if (compatibilityMode != 0)
+                isConnected = true;
         }
 
         @Override
         protected String doInBackground(Void... voids) {
-            getDataFromDevice();
+            switch (compatibilityMode) {
+                case 0:
+                    onDestroy();
+                    break;
+                case 1:
+                    getDataFromDevice();
+                    break;
+            }
             return null;
         }
 
