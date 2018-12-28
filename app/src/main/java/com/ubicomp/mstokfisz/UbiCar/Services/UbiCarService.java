@@ -13,6 +13,7 @@ import android.util.Log;
 import android.widget.Toast;
 import com.github.pires.obd.commands.SpeedCommand;
 import com.github.pires.obd.commands.engine.MassAirFlowCommand;
+import com.github.pires.obd.commands.fuel.WidebandAirFuelRatioCommand;
 import com.github.pires.obd.commands.protocol.EchoOffCommand;
 import com.github.pires.obd.commands.protocol.LineFeedOffCommand;
 import com.github.pires.obd.commands.protocol.SelectProtocolCommand;
@@ -113,9 +114,10 @@ public class UbiCarService extends Service {
     }
 
     private void initializeTestData() {
-        data.addCar(new Car("Mitsubishi Outlander", FuelType.PETROL));
+        data = new Data();
+        data.addCar(new Car("Mitsubishi Outlander", FuelType.DIESEL));
         data.addPassenger(new Passenger("Tester"));
-        data.addTrip(new Trip("Trip 1", data.getCars().get(0), data.getPassengers()));
+        data.addTrip(new Trip("Trip 1", data.getCars().get(data.getCars().size()-1), data.getPassengers()));
         dataHandler.saveData(data);
     }
 
@@ -126,10 +128,15 @@ public class UbiCarService extends Service {
         private double distance;
         private int avgSpeed;
         private long speedSum;
+        private double mafSum;
         private double avgMaf;
         private long workingTime;
         private long realTime = 0;
         private long previousTime;
+        private final FuelType fuelType;
+
+        private double mffSum = 0;
+        private double avgMff = 0;
 
         private long startTime = 0;
         private long startCycleTime = 0;
@@ -139,8 +146,12 @@ public class UbiCarService extends Service {
         private final double airDieselRatio = 14.5;
         private final double airPetrolRatio = 14.7;
 
+        private double currentMaf = 0;
+        private double currentMff;
+        private int currentSpeed = 0;
         private final MassAirFlowCommand mafCommand;
         private final SpeedCommand speedCommand;
+        private WidebandAirFuelRatioCommand afrCommand = null;
         private int compatibilityMode = 1;
 
         private ObdDataGainer(Trip trip) {
@@ -150,10 +161,17 @@ public class UbiCarService extends Service {
             this.avgSpeed = trip.getAvgSpeed();
             this.speedSum = trip.getSpeedSum();
             this.avgMaf = trip.getAvgMaf();
+            this.mafSum = trip.getMafSum();
+            this.avgMff = trip.getAvgMff();
+            this.mffSum = trip.getMffSum();
             this.workingTime = trip.getWorkingTime();
             this.previousTime = trip.getTravelTime();
             this.mafCommand = new MassAirFlowCommand();
             this.speedCommand = new SpeedCommand();
+            this.fuelType = trip.getCar().getFuelType();
+            if (fuelType == FuelType.DIESEL) {
+                afrCommand = new WidebandAirFuelRatioCommand();
+            }
             this.execute();
         }
 
@@ -172,8 +190,9 @@ public class UbiCarService extends Service {
             numberOfCalculations = 0;
             startTime = System.currentTimeMillis();
             startCycleTime = System.currentTimeMillis();
-            while (!Thread.currentThread().isInterrupted())
+            while (!Thread.currentThread().isInterrupted() && isConnected)
             {
+                numberOfCalculations++;
                 try {
                     mafCommand.run(socket.getInputStream(), socket.getOutputStream());
                     speedCommand.run(socket.getInputStream(), socket.getOutputStream());
@@ -181,16 +200,14 @@ public class UbiCarService extends Service {
                     Log.e("OBD", e.getMessage());
                     isConnected = false;
                 }
-                if(numberOfCalculations == 0) {
-                    avgMaf = mafCommand.getMAF();
-                }
-                else {
-                    avgMaf = (avgMaf + mafCommand.getMAF()) / 2;
-                }
-                int currentSpeed = speedCommand.getMetricSpeed();
 
+                currentMaf = mafCommand.getMAF();
+                mafSum += currentMaf;
+
+                currentSpeed = speedCommand.getMetricSpeed();
                 speedSum += currentSpeed;
-                numberOfCalculations++;
+
+                avgMaf = mafSum/numberOfCalculations;
                 avgSpeed = (int)(speedSum/numberOfCalculations);
                 calculateTimeDistance(currentSpeed);
                 String formattedRealTime = formatTime(realTime);
@@ -222,14 +239,18 @@ public class UbiCarService extends Service {
             }
             // Check compatibility
             try {
-                mafCommand.run(socket.getInputStream(), socket.getOutputStream());
+                new TimeoutCommand(200).run(socket.getInputStream(), socket.getOutputStream());
+//                new SpeedCommand().run(socket.getInputStream(), socket.getOutputStream());
                 speedCommand.run(socket.getInputStream(), socket.getOutputStream());
+                mafCommand.run(socket.getInputStream(), socket.getOutputStream());
 
                 if (mafCommand.getMAF() + 1.0f < 0.001f) {
                     throw new CarIncompatibleException("MAF command not supported");
                 }
 
-                speedCommand.getMetricSpeed();
+                if (fuelType == FuelType.DIESEL) {
+                    afrCommand.run(socket.getInputStream(), socket.getOutputStream());
+                }
             } catch (CarIncompatibleException e) {
                 Log.e ("OBD", e.getMessage());
                 Toast.makeText(getApplicationContext(), "Car not compatible!", Toast.LENGTH_LONG).show();
@@ -239,6 +260,7 @@ public class UbiCarService extends Service {
                 Toast.makeText(getApplicationContext(), "Connection problem encountered!", Toast.LENGTH_LONG).show();
                 compatibilityMode = 0;
             } catch (Exception e) {
+                Log.e("OBD", "Second catch");
                 Log.e("OBD", e.getMessage());
                 compatibilityMode = 0;
             }
@@ -287,10 +309,32 @@ public class UbiCarService extends Service {
         }
 
         private double calculateFuelConsumption() {
-            return ((avgMaf * 3600)/airPetrolRatio * petrolDensity * (workingTime /3600000.0)) / (distance * 100.0);
+            Log.d("OBD", "FuelType: "+fuelType);
+            if (fuelType == FuelType.PETROL)
+                return (((avgMaf * 3600)/airPetrolRatio) * petrolDensity * (workingTime /3600000.0)) / (distance * 100.0);
+            if (fuelType == FuelType.DIESEL) {
+                calculateMff();
+                return ((avgMff * dieselDensity * (workingTime /3600000.0)) / (distance * 100.0));
+            }
+            return -1;
+        }
+
+        private void calculateMff() {
+            try {
+                afrCommand.run(socket.getInputStream(), socket.getOutputStream());
+            } catch (Exception e) {
+                Log.e("OBD", e.getMessage());
+                isConnected = false;
+            }
+            Log.d("OBD", "AFR: "+afrCommand.getWidebandAirFuelRatio());
+            currentMff = avgMaf*3600/(afrCommand.getWidebandAirFuelRatio()*(airPetrolRatio/airDieselRatio));
+            mffSum += currentMff;
+            avgMff = mffSum/numberOfCalculations;
         }
 
         private String getFormattedFuelConsumption() {
+            if (distance < 0.01)
+                return "--.-";
             return new DecimalFormat("#.0#").format(calculateFuelConsumption());
         }
 

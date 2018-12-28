@@ -10,9 +10,15 @@ public class Trip {
     private double distance = 0;
     private int avgSpeed = 0;
     private long speedSum = 0;
+    private double mafSum = 0;
     private double avgMaf = 0;
+    private double mffSum = 0;
+    private double avgMff = 0;
     private long workingTime = 0;
     private long travelTime = 0;
+    private long time;
+
+
 
     public Trip(String name, Car car, ArrayList<Passenger> passengers) {
         this.name = name;
@@ -118,5 +124,27 @@ public class Trip {
         this.avgMaf = avgMaf;
     }
 
-    private long time;
+    public double getMafSum() {
+        return mafSum;
+    }
+
+    public void setMafSum(double mafSum) {
+        this.mafSum = mafSum;
+    }
+
+    public double getMffSum() {
+        return mffSum;
+    }
+
+    public void setMffSum(double mffSum) {
+        this.mffSum = mffSum;
+    }
+
+    public double getAvgMff() {
+        return avgMff;
+    }
+
+    public void setAvgMff(double avgMff) {
+        this.avgMff = avgMff;
+    }
 }

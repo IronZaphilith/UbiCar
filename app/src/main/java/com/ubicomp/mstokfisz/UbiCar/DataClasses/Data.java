@@ -3,14 +3,6 @@ package com.ubicomp.mstokfisz.UbiCar.DataClasses;
 import java.util.ArrayList;
 
 public class Data {
-    public Trip getCurrentTrip() {
-        return currentTrip;
-    }
-
-    public void setCurrentTrip(Trip currentTrip) {
-        this.currentTrip = currentTrip;
-    }
-
     private Trip currentTrip;
     private ArrayList<Car> cars;
     private ArrayList<Passenger> passengers;
@@ -69,5 +61,12 @@ public class Data {
         if (trips.contains(trip)) {
             trips.remove(trip);
         }
+    }
+    public Trip getCurrentTrip() {
+        return currentTrip;
+    }
+
+    public void setCurrentTrip(Trip currentTrip) {
+        this.currentTrip = currentTrip;
     }
 }
