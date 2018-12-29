@@ -13,7 +13,6 @@ import android.util.Log;
 import android.widget.Toast;
 import com.github.pires.obd.commands.SpeedCommand;
 import com.github.pires.obd.commands.engine.MassAirFlowCommand;
-import com.github.pires.obd.commands.fuel.WidebandAirFuelRatioCommand;
 import com.github.pires.obd.commands.protocol.EchoOffCommand;
 import com.github.pires.obd.commands.protocol.LineFeedOffCommand;
 import com.github.pires.obd.commands.protocol.SelectProtocolCommand;
@@ -25,6 +24,7 @@ import com.ubicomp.mstokfisz.UbiCar.DataClasses.Data;
 import com.ubicomp.mstokfisz.UbiCar.DataClasses.Passenger;
 import com.ubicomp.mstokfisz.UbiCar.DataClasses.Trip;
 import com.ubicomp.mstokfisz.UbiCar.Exceptions.CarIncompatibleException;
+import com.ubicomp.mstokfisz.UbiCar.OBDCommands.O2LambdaCommand;
 import com.ubicomp.mstokfisz.UbiCar.R;
 import com.ubicomp.mstokfisz.UbiCar.UbiCar;
 import com.ubicomp.mstokfisz.UbiCar.Utils.FuelType;
@@ -148,10 +148,11 @@ public class UbiCarService extends Service {
 
         private double currentMaf = 0;
         private double currentMff;
+        private double currentAfr;
         private int currentSpeed = 0;
         private final MassAirFlowCommand mafCommand;
         private final SpeedCommand speedCommand;
-        private WidebandAirFuelRatioCommand afrCommand = null;
+        private O2LambdaCommand lambdaCommand = null;
         private int compatibilityMode = 1;
 
         private ObdDataGainer(Trip trip) {
@@ -160,9 +161,9 @@ public class UbiCarService extends Service {
             this.distance = trip.getDistance();
             this.avgSpeed = trip.getAvgSpeed();
             this.speedSum = trip.getSpeedSum();
-            this.avgMaf = trip.getAvgMaf();
+            this.avgMaf = trip.getAvgMaf(); //Average Mass Air Flow
             this.mafSum = trip.getMafSum();
-            this.avgMff = trip.getAvgMff();
+            this.avgMff = trip.getAvgMff(); //Average Mass Fuel Flow
             this.mffSum = trip.getMffSum();
             this.workingTime = trip.getWorkingTime();
             this.previousTime = trip.getTravelTime();
@@ -170,7 +171,7 @@ public class UbiCarService extends Service {
             this.speedCommand = new SpeedCommand();
             this.fuelType = trip.getCar().getFuelType();
             if (fuelType == FuelType.DIESEL) {
-                afrCommand = new WidebandAirFuelRatioCommand();
+                lambdaCommand = new O2LambdaCommand();
             }
             this.execute();
         }
@@ -249,7 +250,7 @@ public class UbiCarService extends Service {
                 }
 
                 if (fuelType == FuelType.DIESEL) {
-                    afrCommand.run(socket.getInputStream(), socket.getOutputStream());
+                    lambdaCommand.run(socket.getInputStream(), socket.getOutputStream());
                 }
             } catch (CarIncompatibleException e) {
                 Log.e ("OBD", e.getMessage());
@@ -316,18 +317,23 @@ public class UbiCarService extends Service {
                 calculateMff();
                 return ((avgMff * dieselDensity * (workingTime /3600000.0)) / (distance * 100.0));
             }
-            return -1;
+            return -9999;
         }
 
         private void calculateMff() {
             try {
-                afrCommand.run(socket.getInputStream(), socket.getOutputStream());
+                lambdaCommand.run(socket.getInputStream(), socket.getOutputStream());
             } catch (Exception e) {
                 Log.e("OBD", e.getMessage());
                 isConnected = false;
             }
-            Log.d("OBD", "AFR: "+afrCommand.getWidebandAirFuelRatio());
-            currentMff = avgMaf*3600/(afrCommand.getWidebandAirFuelRatio()*(airPetrolRatio/airDieselRatio));
+            currentAfr = lambdaCommand.getEquivalenceRatio();
+            Log.d("OBD", "AFR: "+ currentAfr);
+            if (currentAfr > 1.97) {
+                currentAfr = 0.23478 / ( 0.218911 - 0.18415 * lambdaCommand.getLambdaVoltage()); //regression function for Passat B6 2.0 TDI
+            }
+            Log.d("OBD", "AFR regression: "+currentAfr);
+            currentMff = avgMaf*3600/(currentAfr/airDieselRatio);
             mffSum += currentMff;
             avgMff = mffSum/numberOfCalculations;
         }
