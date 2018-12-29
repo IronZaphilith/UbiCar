@@ -147,4 +147,6 @@ public class Trip {
     public void setAvgMff(double avgMff) {
         this.avgMff = avgMff;
     }
+
+
 }

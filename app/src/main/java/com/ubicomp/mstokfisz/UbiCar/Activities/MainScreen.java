@@ -163,7 +163,7 @@ public class MainScreen extends AppCompatActivity {
                     isStarted = true;
                     // Check if it was executed
                 }
-                else if (mUbiCarServiceBound) {
+                else {
                     startButton.setText("Start");
                     Log.d("MainView", "OBD stopped!");
                     mUbiCarServiceBound = false;

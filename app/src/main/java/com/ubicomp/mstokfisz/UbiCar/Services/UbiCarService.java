@@ -13,10 +13,13 @@ import android.util.Log;
 import android.widget.Toast;
 import com.github.pires.obd.commands.SpeedCommand;
 import com.github.pires.obd.commands.engine.MassAirFlowCommand;
+import com.github.pires.obd.commands.engine.RPMCommand;
+import com.github.pires.obd.commands.pressure.IntakeManifoldPressureCommand;
 import com.github.pires.obd.commands.protocol.EchoOffCommand;
 import com.github.pires.obd.commands.protocol.LineFeedOffCommand;
 import com.github.pires.obd.commands.protocol.SelectProtocolCommand;
 import com.github.pires.obd.commands.protocol.TimeoutCommand;
+import com.github.pires.obd.commands.temperature.AirIntakeTemperatureCommand;
 import com.github.pires.obd.enums.ObdProtocols;
 import com.ubicomp.mstokfisz.UbiCar.Activities.MainScreen;
 import com.ubicomp.mstokfisz.UbiCar.DataClasses.Car;
@@ -115,7 +118,8 @@ public class UbiCarService extends Service {
 
     private void initializeTestData() {
         data = new Data();
-        data.addCar(new Car("Mitsubishi Outlander", FuelType.DIESEL));
+//        data.addCar(new Car("Mitsubishi Outlander", FuelType.DIESEL, 1968));
+        data.addCar(new Car("Peugeot 207", FuelType.PETROL, 1397));
         data.addPassenger(new Passenger("Tester"));
         data.addTrip(new Trip("Trip 1", data.getCars().get(data.getCars().size()-1), data.getPassengers()));
         dataHandler.saveData(data);
@@ -135,24 +139,28 @@ public class UbiCarService extends Service {
         private long previousTime;
         private final FuelType fuelType;
 
-        private double mffSum = 0;
-        private double avgMff = 0;
+        private double mffSum;
+        private double avgMff;
 
         private long startTime = 0;
         private long startCycleTime = 0;
-        private long currentTime;
         private final double dieselDensity = 0.83;
         private final double petrolDensity = 0.755;
         private final double airDieselRatio = 14.5;
         private final double airPetrolRatio = 14.7;
 
+        private long currentTime;
         private double currentMaf = 0;
         private double currentMff;
         private double currentAfr;
         private int currentSpeed = 0;
+
         private final MassAirFlowCommand mafCommand;
         private final SpeedCommand speedCommand;
         private O2LambdaCommand lambdaCommand = null;
+        private final RPMCommand rpmCommand;
+        private final IntakeManifoldPressureCommand intakeManifoldPressureCommand;
+        private final AirIntakeTemperatureCommand airIntakeTemperatureCommand;
         private int compatibilityMode = 1;
 
         private ObdDataGainer(Trip trip) {
@@ -169,6 +177,9 @@ public class UbiCarService extends Service {
             this.previousTime = trip.getTravelTime();
             this.mafCommand = new MassAirFlowCommand();
             this.speedCommand = new SpeedCommand();
+            this.airIntakeTemperatureCommand = new AirIntakeTemperatureCommand();
+            this.rpmCommand = new RPMCommand();
+            this.intakeManifoldPressureCommand = new IntakeManifoldPressureCommand();
             this.fuelType = trip.getCar().getFuelType();
             if (fuelType == FuelType.DIESEL) {
                 lambdaCommand = new O2LambdaCommand();
@@ -185,6 +196,10 @@ public class UbiCarService extends Service {
             trip.setSpeedSum(speedSum);
             trip.setWorkingTime(workingTime);
             trip.setTravelTime(realTime);
+            trip.setAvgMaf(avgMaf);
+            trip.setMafSum(mafSum);
+            trip.setAvgMff(avgMff);
+            trip.setMffSum(mffSum);
         }
 
         private void getDataFromDevice() {
@@ -195,16 +210,45 @@ public class UbiCarService extends Service {
             {
                 numberOfCalculations++;
                 try {
-                    mafCommand.run(socket.getInputStream(), socket.getOutputStream());
                     speedCommand.run(socket.getInputStream(), socket.getOutputStream());
                 } catch (Exception e) {
                     Log.e("OBD", e.getMessage());
                     isConnected = false;
                 }
 
-                currentMaf = mafCommand.getMAF();
+                if (compatibilityMode == 1) {
+                    try {
+                        mafCommand.run(socket.getInputStream(), socket.getOutputStream());
+                        currentMaf = mafCommand.getMAF();
+                    } catch (Exception e) {
+                        Log.e("OBD", e.getMessage());
+                        isConnected = false;
+                        return;
+                    }
+                } else {
+                    try {
+                        /*
+                        IMAP = RPM * MAP / IAT
+                            RPM
+                            MAP - Manifold Absolute Pressure in kPa
+                            IAT - Intake Air Temperature in Kelvin
+                        MAF = (IMAP/120)*(VE/100)*(ED)*(MM)/(R)
+                            R - Specific Gas Constant (8.314472 J/(mol.K)
+                            MM - Average molecular mass of air (28.9644 g/mol)
+                            VE - volumetric efficiency (most modern cars have a value of 80% to 85% - we use 85% in the app)
+                            ED - Engine Displacement in liters
+                         */
+                        rpmCommand.run(socket.getInputStream(), socket.getOutputStream());
+                        intakeManifoldPressureCommand.run(socket.getInputStream(), socket.getOutputStream());
+                        airIntakeTemperatureCommand.run(socket.getInputStream(), socket.getOutputStream());
+                        currentMaf = ((rpmCommand.getRPM()*intakeManifoldPressureCommand.getMetricUnit()/airIntakeTemperatureCommand.getKelvin())/120)*0.85*((double)trip.getCar().getEngineSize()/1000)*28.9644/8.314472;
+                    } catch (Exception e) {
+                        Log.e("OBD", e.getMessage());
+                        isConnected = false;
+                        return;
+                    }
+                }
                 mafSum += currentMaf;
-
                 currentSpeed = speedCommand.getMetricSpeed();
                 speedSum += currentSpeed;
 
@@ -214,8 +258,8 @@ public class UbiCarService extends Service {
                 String formattedRealTime = formatTime(realTime);
                 String fuelConsumption = getFormattedFuelConsumption();
                 String distance = getFormattedDistance();
-                publishProgress(mafCommand.getFormattedResult(), speedCommand.getFormattedResult(), distance, formattedRealTime, fuelConsumption);
-                Log.d("OBD", "MAF: " + mafCommand.getFormattedResult());
+                publishProgress(currentMaf+" g/s", speedCommand.getFormattedResult(), distance, formattedRealTime, fuelConsumption);
+                Log.d("OBD", "MAF: " + currentMaf+" g/s");
                 Log.d("OBD", "Speed: " + speedCommand.getFormattedResult());
                 Log.d("OBD", "l/100km: " + fuelConsumption);
                 Log.d("OBD", "Distance: " + distance);
@@ -255,30 +299,46 @@ public class UbiCarService extends Service {
             } catch (CarIncompatibleException e) {
                 Log.e ("OBD", e.getMessage());
                 Toast.makeText(getApplicationContext(), "Car not compatible!", Toast.LENGTH_LONG).show();
-                compatibilityMode = 0;
+                compatibilityMode = 2;
             } catch (IOException e) {
                 Log.e("OBD", e.getMessage());
                 Toast.makeText(getApplicationContext(), "Connection problem encountered!", Toast.LENGTH_LONG).show();
-                compatibilityMode = 0;
+                compatibilityMode = 2;
             } catch (Exception e) {
                 Log.e("OBD", "Second catch");
                 Log.e("OBD", e.getMessage());
-                compatibilityMode = 0;
+                compatibilityMode = 2;
+            }
+
+            if (compatibilityMode == 2) { // Try Extended Compatibility Mode
+                try {
+                    new TimeoutCommand(200).run(socket.getInputStream(), socket.getOutputStream());
+                    rpmCommand.run(socket.getInputStream(), socket.getOutputStream());
+                    intakeManifoldPressureCommand.run(socket.getInputStream(), socket.getOutputStream());
+                    airIntakeTemperatureCommand.run(socket.getInputStream(), socket.getOutputStream());
+                    Toast.makeText(getApplicationContext(), "Using extended compatibility mode", Toast.LENGTH_SHORT).show();
+                } catch (IOException e) {
+                    Log.e("OBD", e.getMessage());
+                    Toast.makeText(getApplicationContext(), "Connection problem encountered!", Toast.LENGTH_LONG).show();
+                    compatibilityMode = 0;
+                } catch (Exception e) {
+                    Log.e("OBD", "Second catch");
+                    Log.e("OBD", e.getMessage());
+                    compatibilityMode = 0;
+                }
             }
 
             if (compatibilityMode != 0)
                 isConnected = true;
+
         }
 
         @Override
         protected String doInBackground(Void... voids) {
-            switch (compatibilityMode) {
-                case 0:
-                    onDestroy();
-                    break;
-                case 1:
-                    getDataFromDevice();
-                    break;
+            if (compatibilityMode == 0) {
+                onDestroy();
+            } else {
+                getDataFromDevice();
             }
             return null;
         }

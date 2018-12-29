@@ -5,12 +5,14 @@ import com.ubicomp.mstokfisz.UbiCar.Utils.FuelType;
 public class Car {
     private String name;
     private FuelType fuelType;
+    private int engineSize;
     private int offSet;
 
 
-    public Car(String name, FuelType fuelType) {
+    public Car(String name, FuelType fuelType, int engineSize) {
         this.name = name;
         this.fuelType = fuelType;
+        this.engineSize = engineSize;
     }
 
     public String getName() {
@@ -35,5 +37,13 @@ public class Car {
 
     public void setOffSet(int offSet) {
         this.offSet = offSet;
+    }
+
+    public int getEngineSize() {
+        return engineSize;
+    }
+
+    public void setEngineSize(int engineSize) {
+        this.engineSize = engineSize;
     }
 }
