@@ -26,7 +26,7 @@ import java.util.UUID;
 public class MainScreen extends AppCompatActivity {
 
     private static UbiCar app = null;
-    private Button startButton = null;
+    public Button startButton = null;
     public TextView mafValue = null;
     public TextView speedValue = null;
     public TextView fuelConsumptionValue = null;
