@@ -148,8 +148,8 @@ public class UbiCarService extends Service {
 
         private long startTime = 0;
         private long startCycleTime = 0;
-        private final double dieselDensity = 0.83;
-        private final double petrolDensity = 0.745;
+        private final double dieselDensity = 832;
+        private final double petrolDensity = 745; // g/l
         private final double airDieselRatio = 14.5;
         private final double airPetrolRatio = 14.7;
 
@@ -253,22 +253,22 @@ public class UbiCarService extends Service {
                         return;
                     }
                 }
-//                mafSum += currentMaf;
+                mafSum += currentMaf;
                 currentSpeed = speedCommand.getMetricSpeed();
                 speedSum += currentSpeed;
 
-//                avgMaf = mafSum/numberOfCalculations;
+                avgMaf = mafSum/numberOfCalculations;
                 avgSpeed = (int)(speedSum/numberOfCalculations);
                 calculateTimeDistance(currentSpeed);
                 String formattedRealTime = formatTime(realTime);
                 String fuelConsumption = getFormattedFuelConsumption();
                 String distance = getFormattedDistance();
                 publishProgress(currentMaf+" g/s", speedCommand.getFormattedResult(), distance, formattedRealTime, fuelConsumption);
-                Log.d("OBD", "MAF: " + currentMaf + " g/s");
-                Log.d("OBD", "Speed: " + speedCommand.getFormattedResult());
+//                Log.d("OBD", "MAF: " + currentMaf + " g/s");
+//                Log.d("OBD", "Speed: " + speedCommand.getFormattedResult());
                 Log.d("OBD", "l/100km: " + fuelConsumption);
-                Log.d("OBD", "Distance: " + distance);
-                Log.d("OBD", "Real time: "+ formattedRealTime);
+//                Log.d("OBD", "Distance: " + distance);
+//                Log.d("OBD", "Real time: "+ formattedRealTime);
             }
         }
 
@@ -298,9 +298,9 @@ public class UbiCarService extends Service {
                     throw new CarIncompatibleException("MAF command not supported");
                 }
 
-                if (fuelType == FuelType.DIESEL) {
-                    lambdaCommand.run(socket.getInputStream(), socket.getOutputStream());
-                }
+//                if (fuelType == FuelType.DIESEL) {
+//                    lambdaCommand.run(socket.getInputStream(), socket.getOutputStream());
+//                }
             } catch (CarIncompatibleException e) {
                 Log.e ("OBD", e.getMessage());
                 Toast.makeText(getApplicationContext(), "Car not compatible!", Toast.LENGTH_LONG).show();
@@ -314,7 +314,7 @@ public class UbiCarService extends Service {
                 Log.e("OBD", e.getMessage());
                 compatibilityMode = 2;
             }
-
+//            compatibilityMode = 2;
             if (compatibilityMode == 2) { // Try Extended Compatibility Mode
                 try {
 //                    new TimeoutCommand(50).run(socket.getInputStream(), socket.getOutputStream());
@@ -380,17 +380,22 @@ public class UbiCarService extends Service {
             Log.d("OBD", "FuelType: "+fuelType);
             if (fuelType == FuelType.PETROL) {
                 double previousConsumption = currentFuelConsumption;
-                currentFuelConsumption = (currentMaf / airPetrolRatio) * petrolDensity * currentTime / 1000;
+                Log.d("OBD", "Current time: " + (double)currentTime/1000);
+                currentFuelConsumption = ((currentMaf / airPetrolRatio) / petrolDensity) * ((double)currentTime / 1000);
                 fuelConsumptionSum += currentFuelConsumption;
-//                Log.d("OBD", "Fuel: "+currentFuelConsumption);
-                Log.d("OBD", "Consumption difference" + (previousConsumption - currentFuelConsumption));
-                return fuelConsumptionSum / (100.0 * distance);
+                Log.d("OBD", "Fuel: "+currentFuelConsumption);
+//                Log.d("OBD", "Consumption difference" + (previousConsumption - currentFuelConsumption));
+                return fuelConsumptionSum * 100.0 / distance;
+//                return ((avgMaf/airPetrolRatio)/petrolDensity) * ((double)workingTime/1000) / (distance * 100);
             }
             if (fuelType == FuelType.DIESEL) {
-                currentMff = calculateMff();
-                currentFuelConsumption = currentMff * dieselDensity * currentTime / 1000;
+//                currentMff = calculateMff();
+//                currentFuelConsumption = currentMff * dieselDensity * currentTime / 1000;
+//                fuelConsumptionSum += currentFuelConsumption;
+//                return fuelConsumptionSum / (distance * 100.0);
+                currentFuelConsumption = ((currentMaf / airDieselRatio) / dieselDensity) * currentTime / 1000;
                 fuelConsumptionSum += currentFuelConsumption;
-                return fuelConsumptionSum / (distance * 100.0);
+                return fuelConsumptionSum * 100.0 / distance;
             }
             return -9999;
         }
