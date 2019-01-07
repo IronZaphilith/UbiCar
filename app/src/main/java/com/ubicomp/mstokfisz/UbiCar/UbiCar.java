@@ -6,17 +6,19 @@ import android.app.NotificationManager;
 import android.bluetooth.BluetoothSocket;
 import android.os.Build;
 import com.ubicomp.mstokfisz.UbiCar.Activities.MainScreen;
+import com.ubicomp.mstokfisz.UbiCar.Services.DataHandler;
 
 public class UbiCar extends Application {
     public static final String CHANNEL_ID = "ubiCarServiceChannel";
     private MainScreen activeMainScreen = null;
     private BluetoothSocket socket = null;
+    public DataHandler dataHandler = null;
 
     @Override
     public void onCreate() {
         super.onCreate();
-
         createNotificationChannel();
+        dataHandler = new DataHandler(this);
     }
 
     private void createNotificationChannel() {

@@ -1,12 +1,17 @@
 package com.ubicomp.mstokfisz.UbiCar.Services;
 
 import android.content.Context;
+import android.media.MediaScannerConnection;
+import android.os.Environment;
 import android.util.Log;
+import android.widget.Toast;
 import com.google.gson.Gson;
 import com.ubicomp.mstokfisz.UbiCar.DataClasses.Data;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class DataHandler {
     private static final String DATA_FILE = "data";
@@ -76,6 +81,29 @@ public class DataHandler {
                 e.printStackTrace();
             }
         }
+        if (!isExternalStorageAvailable() || isExternalStorageReadOnly()) {
+            Log.d("DataHandler", "Couldn't save");
+        }
+        else {
+            try {
+                String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+                FileOutputStream fos = new FileOutputStream("UbiCar"+timeStamp+".txt");
+                fos.write(("Distance: "+data.getCurrentTrip().getDistance()+" km").getBytes());
+                fos.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static boolean isExternalStorageReadOnly() {
+        String extStorageState = Environment.getExternalStorageState();
+        return Environment.MEDIA_MOUNTED_READ_ONLY.equals(extStorageState);
+    }
+
+    private static boolean isExternalStorageAvailable() {
+        String extStorageState = Environment.getExternalStorageState();
+        return Environment.MEDIA_MOUNTED.equals(extStorageState);
     }
 
     private boolean isFilePresent() {

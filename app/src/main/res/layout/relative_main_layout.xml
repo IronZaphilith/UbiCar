@@ -6,22 +6,78 @@
                 android:background="#424242"
                 android:orientation="vertical"
                 tools:context=".Activities.MainScreen">
-	 <LinearLayout
+	<LinearLayout
+			android:id="@+id/carNameInput"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:weightSum="2"
+			android:orientation="horizontal"
+			android:layout_above="@+id/engineSizeInput"
+			android:layout_marginBottom="10dp">
+
+		<TextView
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:text="Car name:"
+				android:textSize="30sp"
+				android:gravity="center"
+				android:textColor="#78909C"/>
+		<EditText
+				android:id="@+id/carNameValue"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:inputType="text"
+				android:ems="10"
+				android:layout_weight="1"
+				android:layout_gravity="bottom"
+				android:textColor="#78909C"/>
+	</LinearLayout>
+	<LinearLayout
+			android:id="@+id/engineSizeInput"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:weightSum="2"
+			android:orientation="horizontal"
+			android:layout_above="@+id/timeValueContainer"
+			android:layout_marginBottom="20dp">
+
+		<TextView
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:text="Engine size (cm3):"
+				android:textSize="30sp"
+				android:gravity="center"
+				android:textColor="#78909C"/>
+		<EditText
+				android:id="@+id/engineSizeValue"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:inputType="number"
+				android:ems="10"
+				android:layout_weight="1"
+				android:layout_gravity="bottom"
+				android:textColor="#78909C"/>
+	</LinearLayout>
+	
+	<LinearLayout
 		    android:id="@+id/mafValueContainer"
 	        android:layout_width="match_parent"
 	        android:layout_height="wrap_content"
 	        android:weightSum="2"
 	        android:orientation="horizontal"
-	        android:layout_centerInParent="true">
-		 <TextView
-	        android:layout_width="0dp"
-	        android:layout_height="wrap_content"
-	        android:layout_weight="1"
-		    android:text="MAF:"
-	        android:textSize="30sp"
-	        android:gravity="center"
-	        android:textColor="#78909C"/>
-		 <TextView
+	        android:layout_above="@id/btnsContainer"
+			android:layout_marginBottom="10dp">
+		<TextView
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:text="MAF:"
+				android:textSize="30sp"
+				android:gravity="center"
+				android:textColor="#78909C"/>
+		<TextView
 			 android:id="@+id/mafValue"
 			 android:layout_width="0dp"
 			 android:layout_height="wrap_content"
@@ -60,7 +116,7 @@
 			android:layout_height="wrap_content"
 			android:weightSum="2"
 			android:orientation="horizontal"
-			android:layout_above="@+id/speedValueContainer">
+			android:layout_above="@+id/consumedFuelLitres">
 		<TextView
 				android:layout_width="0dp"
 				android:layout_height="wrap_content"
@@ -71,6 +127,30 @@
 				android:textColor="#78909C"/>
 		<TextView
 				android:id="@+id/fuelConsumptionValue"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:textSize="30sp"
+				android:textColor="#78909C"
+				android:gravity="center"/>
+	</LinearLayout>
+	<LinearLayout
+			android:id="@+id/consumedFuelLitres"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:weightSum="2"
+			android:orientation="horizontal"
+			android:layout_above="@+id/speedValueContainer">
+		<TextView
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:text="L consumed:"
+				android:textSize="30sp"
+				android:gravity="center"
+				android:textColor="#78909C"/>
+		<TextView
+				android:id="@+id/consumedFuelLitresValue"
 				android:layout_width="0dp"
 				android:layout_height="wrap_content"
 				android:layout_weight="1"
@@ -130,20 +210,20 @@
 			android:id="@+id/btnsContainer"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:layout_below="@+id/mafValueContainer"
-			android:layout_marginTop="50dp"
+			android:layout_marginBottom="30dp"
 			android:weightSum="2"
+			android:layout_alignParentBottom="true"
 			android:orientation="horizontal">
 		<Button
-			android:id="@+id/startBtn"
-			android:layout_weight="1"
-			android:text="Start"
-			android:textColor="#BDBDBD"
-			android:background="#212121"
-			android:textSize="30sp"
-			android:padding="10dp"
-			android:layout_width="0dp"
-	        android:layout_height="wrap_content"/>
+				android:id="@+id/startBtn"
+				android:layout_weight="1"
+				android:text="Start"
+				android:textColor="#BDBDBD"
+				android:background="#212121"
+				android:textSize="30sp"
+				android:padding="10dp"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"/>
 		<Button
 			android:id="@+id/resetBtn"
 			android:layout_weight="1"

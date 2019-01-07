@@ -14,6 +14,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.ubicomp.mstokfisz.UbiCar.DataClasses.Data;
 import com.ubicomp.mstokfisz.UbiCar.R;
 import com.ubicomp.mstokfisz.UbiCar.Services.UbiCarService;
 import com.ubicomp.mstokfisz.UbiCar.Services.UbiCarService.MyBinder;
@@ -26,12 +27,14 @@ import java.util.UUID;
 public class MainScreen extends AppCompatActivity {
 
     private static UbiCar app = null;
+    private Data data = null;
     public Button startButton = null;
     public TextView mafValue = null;
     public TextView speedValue = null;
     public TextView fuelConsumptionValue = null;
     public TextView distanceValue = null;
     public TextView timeValue = null;
+    public TextView litersConsumedValue = null;
     private String deviceAddress = null;
     private boolean isStarted = false;
     public BluetoothSocket socket = null;
@@ -45,6 +48,8 @@ public class MainScreen extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         app = ((UbiCar)getApplicationContext());
         app.setActiveMainScreen(this);
+
+        data = app.dataHandler.getData();
 
         setContentView(R.layout.relative_main_layout);
         Button connectButton = findViewById(R.id.connectBtn);
@@ -178,6 +183,7 @@ public class MainScreen extends AppCompatActivity {
         fuelConsumptionValue = findViewById(R.id.fuelConsumptionValue);
         distanceValue = findViewById(R.id.distanceValue);
         timeValue = findViewById(R.id.timeValue);
+        litersConsumedValue = findViewById(R.id.consumedFuelLitresValue);
         resetValues();
     }
 
@@ -242,9 +248,10 @@ public class MainScreen extends AppCompatActivity {
     private void resetValues() {
         speedValue.setText("0 km/h");
         mafValue.setText(Double.toString(AFR) + " g/s");
-        fuelConsumptionValue.setText("0.0");
+        fuelConsumptionValue.setText("--.-");
         distanceValue.setText("0 km");
         timeValue.setText("0:00:00");
+        litersConsumedValue.setText("0.000 l");
     }
 
     private ServiceConnection mServiceConnection = new ServiceConnection() {
