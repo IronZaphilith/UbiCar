@@ -1,19 +1,22 @@
 package com.ubicomp.mstokfisz.UbiCar.Activities;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.*;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.IBinder;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.*;
+import com.ubicomp.mstokfisz.UbiCar.DataClasses.Car;
 import com.ubicomp.mstokfisz.UbiCar.DataClasses.Data;
 import com.ubicomp.mstokfisz.UbiCar.R;
 import com.ubicomp.mstokfisz.UbiCar.Services.UbiCarService;
@@ -35,6 +38,8 @@ public class MainScreen extends AppCompatActivity {
     public TextView distanceValue = null;
     public TextView timeValue = null;
     public TextView litersConsumedValue = null;
+    private EditText carNameValue = null;
+    private EditText engineSizeValue = null;
     private String deviceAddress = null;
     private boolean isStarted = false;
     public BluetoothSocket socket = null;
@@ -43,6 +48,7 @@ public class MainScreen extends AppCompatActivity {
 
 
     private double AFR = 0.0;
+    @SuppressLint("SetTextI18n")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -161,12 +167,23 @@ public class MainScreen extends AppCompatActivity {
             public void onClick(View view) {
                 Log.d("MainView", "Start clicked!");
                 if (!isStarted) {
-                    final Intent intent = new Intent(MainScreen.this, UbiCarService.class);
-                    startService(intent);
-                    bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE);
-                    startButton.setText("Stop");
-                    isStarted = true;
-                    // Check if it was executed
+                    if (isStoragePermissionGranted()) {
+                        if (carNameValue.getText().toString().length() != 0 && engineSizeValue.getText().toString().length() != 0) {
+                            final Intent intent = new Intent(MainScreen.this, UbiCarService.class);
+                            intent.putExtra("carName", carNameValue.getText().toString());
+                            intent.putExtra("engineSize", Integer.parseInt(engineSizeValue.getText().toString(), 10));
+                            startService(intent);
+                            bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE);
+                            startButton.setText("Stop");
+                            isStarted = true;
+                            // Check if it was executed
+                        } else {
+                            Toast.makeText(getApplicationContext(),"Provide Car name and engine size!", Toast.LENGTH_LONG).show();
+                        }
+                    }
+                    else {
+                        Toast.makeText(getApplicationContext(),"Required permissions missing!", Toast.LENGTH_LONG);
+                    }
                 }
                 else {
                     startButton.setText("Start");
@@ -184,6 +201,14 @@ public class MainScreen extends AppCompatActivity {
         distanceValue = findViewById(R.id.distanceValue);
         timeValue = findViewById(R.id.timeValue);
         litersConsumedValue = findViewById(R.id.consumedFuelLitresValue);
+        carNameValue = findViewById(R.id.carNameValue);
+        engineSizeValue = findViewById(R.id.engineSizeValue);
+        if (data.getCars().size() > 0) {
+            Car latestCar = data.getCars().get(data.getCars().size() - 1);
+            Log.d("MainActivity", latestCar.getName());
+            carNameValue.setText(latestCar.getName(), TextView.BufferType.EDITABLE);
+            engineSizeValue.setText(Integer.toString(latestCar.getEngineSize(),10), TextView.BufferType.EDITABLE);
+        }
         resetValues();
     }
 
@@ -269,4 +294,20 @@ public class MainScreen extends AppCompatActivity {
             mUbiCarServiceBound = true;
         }
     };
+
+    private boolean isStoragePermissionGranted() {
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED) {
+                return true;
+            } else {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+                return false;
+            }
+        }
+        else { //permission is automatically granted on sdk<23 upon installation
+            return true;
+        }
+    }
 }

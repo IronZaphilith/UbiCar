@@ -11,9 +11,8 @@ public class Trip {
     private int avgSpeed = 0;
     private long speedSum = 0;
     private double fuelConsumptionSum = 0;
-    private long workingTime = 0;
+    private double avgfuelConsumption= 0;
     private long travelTime = 0;
-    private long time;
 
 
 
@@ -23,28 +22,12 @@ public class Trip {
         this.passengers = passengers;
     }
 
-    public long getWorkingTime() {
-        return workingTime;
-    }
-
-    public void setWorkingTime(long workingTime) {
-        this.workingTime = workingTime;
-    }
-
     public long getTravelTime() {
         return travelTime;
     }
 
     public void setTravelTime(long travelTime) {
         this.travelTime = travelTime;
-    }
-
-    public long getTime() {
-        return time;
-    }
-
-    public void setTime(long time) {
-        this.time = time;
     }
 
     public String getName() {
@@ -119,5 +102,13 @@ public class Trip {
 
     public void setFuelConsumptionSum(double fuelConsumptionSum) {
         this.fuelConsumptionSum = fuelConsumptionSum;
+    }
+
+    public double getAvgfuelConsumption() {
+        return avgfuelConsumption;
+    }
+
+    public void setAvgfuelConsumption(double avgfuelConsumption) {
+        this.avgfuelConsumption = avgfuelConsumption;
     }
 }

@@ -54,7 +54,6 @@ public class UbiCarService extends Service {
 
         app = (UbiCar) getApplicationContext();
         data = app.dataHandler.getData();
-        initializeTestData();
     }
 
     @Override
@@ -76,6 +75,7 @@ public class UbiCarService extends Service {
 
         startForeground(1, notification);
 
+        initializeTestData(intent.getStringExtra("carName"), intent.getIntExtra("engineSize", 1108));
         return START_NOT_STICKY;
     }
 
@@ -84,6 +84,7 @@ public class UbiCarService extends Service {
         super.onDestroy();
         Log.d(LOG_TAG, "Destroy");
         obdDataGainer.finish();
+        isConnected = false;
         stopSelf();
     }
 
@@ -114,14 +115,14 @@ public class UbiCarService extends Service {
         this.obdDataGainer = new ObdDataGainer(data.getCurrentTrip());
     }
 
-    private void initializeTestData() {
+    private void initializeTestData(String carName, int engineSize) {
         data = new Data();
 //        data.addCar(new Car("Mitsubishi Outlander", FuelType.DIESEL, 1968));
 //        data.addCar(new Car("Peugeot 207", FuelType.PETROL, 1397));
-        data.addCar(new Car("Seicento", FuelType.PETROL, 1108));
+        data.addCar(new Car(carName, FuelType.PETROL, engineSize));
         data.addPassenger(new Passenger("Tester"));
         data.addTrip(new Trip("Trip 1", data.getCars().get(data.getCars().size()-1), data.getPassengers()));
-        app.dataHandler.saveData(data);
+//        app.dataHandler.saveData(data);
     }
 
     public class ObdDataGainer extends AsyncTask<Void, String, String> {
@@ -131,8 +132,7 @@ public class UbiCarService extends Service {
         private double distance;
         private int avgSpeed;
         private long speedSum;
-        private double fuelConsumptionSum = 0;
-//        private long workingTime;
+        private double fuelConsumptionSum;
         private long realTime = 0;
         private long previousTime;
         private final FuelType fuelType;
@@ -161,6 +161,8 @@ public class UbiCarService extends Service {
         private final AirIntakeTemperatureCommand airIntakeTemperatureCommand;
         private int compatibilityMode = 1;
 
+        private boolean finishExecuted = false;
+
         private ObdDataGainer(Trip trip) {
             this.trip = trip;
             this.numberOfCalculations = trip.getNumberOfCalculations();
@@ -184,6 +186,7 @@ public class UbiCarService extends Service {
         }
 
         public void finish() {
+            finishExecuted = true;
             obdDataGainer.cancel(true);
             trip.setAvgSpeed(avgSpeed);
             trip.setDistance(distance);
@@ -192,6 +195,8 @@ public class UbiCarService extends Service {
 //            trip.setWorkingTime(workingTime);
             trip.setTravelTime(realTime);
             trip.setFuelConsumptionSum(fuelConsumptionSum);
+            trip.setAvgfuelConsumption(currentLitresPer100Km);
+            app.dataHandler.saveData(data);
         }
 
         private void getDataFromDevice() {
@@ -247,6 +252,8 @@ public class UbiCarService extends Service {
 //                Log.d("OBD", "Real time: "+ formattedRealTime);
                 Log.d("OBD", "Consumed fuel: " + fuelConsumptionSum +" l");
             }
+            if (!finishExecuted)
+                finish();
         }
 
         @Override
