@@ -1,14 +1,9 @@
 package com.ubicomp.mstokfisz.UbiCar.Services;
 
-import android.Manifest;
 import android.content.Context;
-import android.content.pm.PackageManager;
-import android.media.MediaScannerConnection;
-import android.os.Build;
 import android.os.Environment;
-import android.support.v4.app.ActivityCompat;
 import android.util.Log;
-import android.widget.Toast;
+import com.balsikandar.crashreporter.CrashReporter;
 import com.google.gson.Gson;
 import com.ubicomp.mstokfisz.UbiCar.DataClasses.Data;
 
@@ -55,6 +50,7 @@ public class DataHandler {
                     fileInputStream.close();
                 }
             } catch(IOException e) {
+                CrashReporter.logException(e);
                 Log.e("FILE", "IO error closing");
                 e.printStackTrace();
             }
@@ -82,6 +78,7 @@ public class DataHandler {
                     fileOutputStream.close();
                 }
             } catch(IOException e) {
+                CrashReporter.logException(e);
                 Log.e("FILE", "IO error closing");
                 e.printStackTrace();
             }
@@ -131,6 +128,7 @@ public class DataHandler {
                     fos.close();
                 }
             } catch (IOException e) {
+                CrashReporter.logException(e);
                 e.printStackTrace();
             }
         }

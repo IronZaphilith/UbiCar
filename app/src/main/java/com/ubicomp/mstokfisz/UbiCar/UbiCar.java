@@ -5,8 +5,12 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.bluetooth.BluetoothSocket;
 import android.os.Build;
+import android.os.Environment;
+import com.balsikandar.crashreporter.CrashReporter;
 import com.ubicomp.mstokfisz.UbiCar.Activities.MainScreen;
 import com.ubicomp.mstokfisz.UbiCar.Services.DataHandler;
+
+import java.io.File;
 
 public class UbiCar extends Application {
     public static final String CHANNEL_ID = "ubiCarServiceChannel";
@@ -19,6 +23,7 @@ public class UbiCar extends Application {
         super.onCreate();
         createNotificationChannel();
         dataHandler = new DataHandler(this);
+        CrashReporter.initialize(this, Environment.getExternalStorageDirectory()+ File.separator+"UbiCar");
     }
 
     private void createNotificationChannel() {

@@ -16,6 +16,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.*;
+import com.balsikandar.crashreporter.CrashReporter;
 import com.ubicomp.mstokfisz.UbiCar.DataClasses.Car;
 import com.ubicomp.mstokfisz.UbiCar.DataClasses.Data;
 import com.ubicomp.mstokfisz.UbiCar.R;
@@ -41,7 +42,7 @@ public class MainScreen extends AppCompatActivity {
     private EditText carNameValue = null;
     private EditText engineSizeValue = null;
     private String deviceAddress = null;
-    private boolean isStarted = false;
+    public boolean isStarted = false;
     public BluetoothSocket socket = null;
     private UbiCarService mUbiCarService;
     private boolean mUbiCarServiceBound = false;
@@ -64,6 +65,7 @@ public class MainScreen extends AppCompatActivity {
             public void onClick(View view) {
                 if (mUbiCarService != null && mUbiCarService.isConnected) {
                     Toast.makeText(getApplicationContext(), "Device already connected!",Toast.LENGTH_SHORT).show();
+                    return;
                 }
                 final ArrayList deviceStrs = new ArrayList();
                 final ArrayList devices = new ArrayList();
@@ -263,8 +265,10 @@ public class MainScreen extends AppCompatActivity {
             socket = device.createInsecureRfcommSocketToServiceRecord(uuid);
             socket.connect();
         } catch (Exception e) {
+            CrashReporter.logException(e);
             Log.e("Bluetooth", e.getMessage());
             Toast.makeText(getApplicationContext(), "Couldn't connect to the device!", Toast.LENGTH_LONG).show();
+            return;
             //Throw exception
         }
         Toast.makeText(getApplicationContext(), device.getName() + " connected!", Toast.LENGTH_LONG).show();

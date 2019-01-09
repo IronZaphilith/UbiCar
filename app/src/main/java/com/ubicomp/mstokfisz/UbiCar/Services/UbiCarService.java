@@ -11,6 +11,7 @@ import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
+import com.balsikandar.crashreporter.CrashReporter;
 import com.github.pires.obd.commands.SpeedCommand;
 import com.github.pires.obd.commands.engine.MassAirFlowCommand;
 import com.github.pires.obd.commands.engine.RPMCommand;
@@ -231,7 +232,9 @@ public class UbiCarService extends Service {
                         currentMaf = ((rpmCommand.getRPM() * intakeManifoldPressureCommand.getMetricUnit() / airIntakeTemperatureCommand.getKelvin()) / 120) * 0.85 * ((double) trip.getCar().getEngineSize() / 1000) * 28.9644 / 8.314472;
                     }
                 } catch (Exception e) {
+                    CrashReporter.logException(e);
                     mainScreen.startButton.setText("START");
+                    mainScreen.isStarted = false;
 //                    Toast.makeText(getApplicationContext(), "Connection problem!", Toast.LENGTH_SHORT).show();
                     Log.e("OBD", e.getMessage());
                     isConnected = false;
@@ -252,8 +255,10 @@ public class UbiCarService extends Service {
 //                Log.d("OBD", "Real time: "+ formattedRealTime);
                 Log.d("OBD", "Consumed fuel: " + fuelConsumptionSum +" l");
             }
-            if (!finishExecuted)
+            if (!finishExecuted) {
+                mainScreen.isStarted = false;
                 finish();
+            }
         }
 
         @Override
@@ -269,6 +274,7 @@ public class UbiCarService extends Service {
 
                 new SelectProtocolCommand(ObdProtocols.AUTO).run(socket.getInputStream(), socket.getOutputStream());
             } catch (Exception e) {
+                CrashReporter.logException(e);
                 Toast.makeText(getApplicationContext(), "Connection problem!", Toast.LENGTH_SHORT).show();
                 Log.e("OBD", e.getMessage());
                 compatibilityMode = 0;
@@ -313,6 +319,7 @@ public class UbiCarService extends Service {
                     compatibilityMode = 0;
                     return;
                 } catch (Exception e) {
+                    CrashReporter.logException(e);
                     Log.e("OBD", e.getMessage());
                     compatibilityMode = 0;
                     return;
@@ -325,7 +332,9 @@ public class UbiCarService extends Service {
             }
             else {
                 Toast.makeText(getApplicationContext(), "Car not compatible!", Toast.LENGTH_LONG).show();
+                isConnected = false;
                 mainScreen.startButton.setText("START");
+                mainScreen.isStarted = false;
             }
 
         }
